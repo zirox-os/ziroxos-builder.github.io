@@ -1,0 +1,51 @@
+name: Construir Zirox OS ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar archivos del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar herramientas de Arch Linux en la nube
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y arch-install-scripts dosfstools e2fsprogs erofs-utils libarchive-tools mtools squashfs-tools xorriso zstd curl
+
+      - name: Descargar archiso oficial
+        run: |
+          git clone --depth 1 https://archlinux.org
+          cp -r archiso/configs/releng zirox-profile
+
+      - name: Configurar Zirox OS (Hyprland + Nombre)
+        run: |
+          cat packages.x86_64 >> zirox-profile/packages.x86_64
+          sort -u zirox-profile/packages.x86_64 -o zirox-profile/packages.x86_64
+          sed -i 's/iso_name="archlinux"/iso_name="zirox-os"/g' zirox-profile/profiledef.sh
+          sed -i 's/iso_label="ARCH_/iso_label="ZIROX_/g' zirox-profile/profiledef.sh
+          sed -i 's/iso_publisher="Arch Linux <https:\/\/archlinux.org>"/iso_publisher="Zirox OS <https:\/\/zirox-os.github.io>"/g' zirox-profile/profiledef.sh
+          sed -i 's/iso_application="Arch Linux Live\/Rescue CD"/iso_application="Zirox OS Live ISO"/g' zirox-profile/profiledef.sh
+          mkdir -p zirox-profile/airootfs/etc
+          cp os-release zirox-profile/airootfs/etc/os-release
+          ln -sf /usr/lib/systemd/system/sddm.service zirox-profile/airootfs/etc/systemd/system/display-manager.service
+          ln -sf /usr/lib/systemd/system/NetworkManager.service zirox-profile/airootfs/etc/systemd/system/multi-user.target.wants/NetworkManager.service
+
+      - name: Compilar ISO en servidores de GitHub
+        run: |
+          sudo ./archiso/archiso/mkarchiso -v -w /tmp/work -o out zirox-profile
+
+      - name: Publicar ISO en GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-${{ github.run_number }}
+          name: Zirox OS 1.0 (Build #${{ github.run_number }})
+          body: "Imagen ISO oficial de Zirox OS basada en Arch Linux con entorno Hyprland."
+          files: out/*.iso
