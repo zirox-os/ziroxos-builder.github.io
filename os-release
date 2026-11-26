@@ -1,0 +1,7 @@
+NAME="Zirox OS"
+PRETTY_NAME="Zirox OS Linux"
+ID=zirox
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;168;85;247"
+HOME_URL="https://zirox-os.github.io/"
